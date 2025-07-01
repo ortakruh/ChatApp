@@ -1,4 +1,4 @@
-import { users, friendships, type User, type InsertUser, type Friendship, type UpdateProfile } from "@shared/schema";
+import { users, friendships, directMessages, voiceCalls, type User, type InsertUser, type Friendship, type UpdateProfile, type DirectMessage, type VoiceCallData, type SendMessage, type VoiceCall } from "@shared/schema";
 
 export interface IStorage {
   // User operations
@@ -15,19 +15,36 @@ export interface IStorage {
   createFriendRequest(userId: number, friendId: number): Promise<Friendship>;
   updateFriendshipStatus(userId: number, friendId: number, status: string): Promise<boolean>;
   getFriendship(userId: number, friendId: number): Promise<Friendship | undefined>;
+  
+  // Message operations
+  getMessagesBetweenUsers(userId1: number, userId2: number): Promise<DirectMessage[]>;
+  sendMessage(senderId: number, receiverId: number, message: string): Promise<DirectMessage>;
+  
+  // Voice call operations
+  createVoiceCall(callerId: number, receiverId: number): Promise<VoiceCallData>;
+  updateVoiceCallStatus(callId: number, status: string): Promise<boolean>;
+  getActiveVoiceCall(userId: number): Promise<VoiceCallData | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private friendships: Map<number, Friendship>;
+  private messages: Map<number, DirectMessage>;
+  private voiceCalls: Map<number, VoiceCallData>;
   private currentUserId: number;
   private currentFriendshipId: number;
+  private currentMessageId: number;
+  private currentVoiceCallId: number;
 
   constructor() {
     this.users = new Map();
     this.friendships = new Map();
+    this.messages = new Map();
+    this.voiceCalls = new Map();
     this.currentUserId = 1;
     this.currentFriendshipId = 1;
+    this.currentMessageId = 1;
+    this.currentVoiceCallId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -130,6 +147,59 @@ export class MemStorage implements IStorage {
     return Array.from(this.friendships.values()).find(
       f => (f.userId === userId && f.friendId === friendId) || 
            (f.userId === friendId && f.friendId === userId)
+    );
+  }
+
+  // Message operations
+  async getMessagesBetweenUsers(userId1: number, userId2: number): Promise<DirectMessage[]> {
+    return Array.from(this.messages.values())
+      .filter(m => 
+        (m.senderId === userId1 && m.receiverId === userId2) ||
+        (m.senderId === userId2 && m.receiverId === userId1)
+      )
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  async sendMessage(senderId: number, receiverId: number, message: string): Promise<DirectMessage> {
+    const id = this.currentMessageId++;
+    const directMessage: DirectMessage = {
+      id,
+      senderId,
+      receiverId,
+      message,
+      createdAt: new Date(),
+    };
+    this.messages.set(id, directMessage);
+    return directMessage;
+  }
+
+  // Voice call operations
+  async createVoiceCall(callerId: number, receiverId: number): Promise<VoiceCallData> {
+    const id = this.currentVoiceCallId++;
+    const voiceCall: VoiceCallData = {
+      id,
+      callerId,
+      receiverId,
+      status: 'calling',
+      createdAt: new Date(),
+    };
+    this.voiceCalls.set(id, voiceCall);
+    return voiceCall;
+  }
+
+  async updateVoiceCallStatus(callId: number, status: string): Promise<boolean> {
+    const voiceCall = this.voiceCalls.get(callId);
+    if (!voiceCall) return false;
+    
+    voiceCall.status = status;
+    this.voiceCalls.set(callId, voiceCall);
+    return true;
+  }
+
+  async getActiveVoiceCall(userId: number): Promise<VoiceCallData | undefined> {
+    return Array.from(this.voiceCalls.values()).find(
+      v => (v.callerId === userId || v.receiverId === userId) && 
+           (v.status === 'calling' || v.status === 'active')
     );
   }
 }

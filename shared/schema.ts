@@ -21,6 +21,22 @@ export const friendships = pgTable("friendships", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull(),
+  receiverId: integer("receiver_id").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const voiceCalls = pgTable("voice_calls", {
+  id: serial("id").primaryKey(),
+  callerId: integer("caller_id").notNull(),
+  receiverId: integer("receiver_id").notNull(),
+  status: text("status").notNull(), // 'calling', 'active', 'ended'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -49,9 +65,23 @@ export const addFriendSchema = z.object({
   friendCode: z.string().min(1, "Friend code is required"),
 });
 
+export const sendMessageSchema = z.object({
+  receiverId: z.number(),
+  message: z.string().min(1, "Message cannot be empty"),
+});
+
+export const voiceCallSchema = z.object({
+  receiverId: z.number(),
+  action: z.enum(["start", "accept", "reject", "end"]),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 export type AddFriend = z.infer<typeof addFriendSchema>;
+export type SendMessage = z.infer<typeof sendMessageSchema>;
+export type VoiceCall = z.infer<typeof voiceCallSchema>;
 export type User = typeof users.$inferSelect;
 export type Friendship = typeof friendships.$inferSelect;
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type VoiceCallData = typeof voiceCalls.$inferSelect;

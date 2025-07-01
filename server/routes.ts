@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertUserSchema, loginUserSchema, updateProfileSchema, addFriendSchema } from "@shared/schema";
+import { insertUserSchema, loginUserSchema, updateProfileSchema, addFriendSchema, sendMessageSchema, voiceCallSchema } from "@shared/schema";
 import { z } from "zod";
 
 function generateFriendCode(): string {
@@ -227,6 +228,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get messages between two users
+  app.get("/api/messages/:userId/:friendId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const friendId = parseInt(req.params.friendId);
+      
+      const messages = await storage.getMessagesBetweenUsers(userId, friendId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Send a message
+  app.post("/api/messages", async (req, res) => {
+    try {
+      const messageData = sendMessageSchema.parse(req.body);
+      const senderId = (req as any).session.userId;
+      
+      if (!senderId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const message = await storage.sendMessage(senderId, messageData.receiverId, messageData.message);
+      res.json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Voice call operations
+  app.post("/api/voice-call", async (req, res) => {
+    try {
+      const callData = voiceCallSchema.parse(req.body);
+      const callerId = (req as any).session.userId;
+      
+      if (!callerId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (callData.action === 'start') {
+        const voiceCall = await storage.createVoiceCall(callerId, callData.receiverId);
+        res.json(voiceCall);
+      } else {
+        // For accept, reject, end actions, we need to find the existing call
+        const activeCall = await storage.getActiveVoiceCall(callerId);
+        if (!activeCall) {
+          return res.status(404).json({ message: "No active call found" });
+        }
+
+        let newStatus;
+        switch (callData.action) {
+          case 'accept':
+            newStatus = 'active';
+            break;
+          case 'reject':
+          case 'end':
+            newStatus = 'ended';
+            break;
+          default:
+            return res.status(400).json({ message: "Invalid action" });
+        }
+
+        await storage.updateVoiceCallStatus(activeCall.id, newStatus);
+        res.json({ success: true, status: newStatus });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get active voice call for user
+  app.get("/api/voice-call/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const activeCall = await storage.getActiveVoiceCall(userId);
+      res.json(activeCall || null);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
+  
+  // WebSocket server for real-time communication
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store user connections
+  const userConnections = new Map<number, WebSocket>();
+  
+  wss.on('connection', (ws) => {
+    let userId: number | null = null;
+    
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        switch (message.type) {
+          case 'auth':
+            userId = message.userId;
+            if (userId) {
+              userConnections.set(userId, ws);
+            }
+            break;
+            
+          case 'voice_call_signal':
+            // WebRTC signaling for voice calls
+            const { targetUserId, signal } = message;
+            const targetWs = userConnections.get(targetUserId);
+            if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+              targetWs.send(JSON.stringify({
+                type: 'voice_call_signal',
+                fromUserId: userId,
+                signal: signal
+              }));
+            }
+            break;
+            
+          case 'message':
+            // Real-time message delivery
+            const { receiverId, messageText } = message;
+            if (userId) {
+              const savedMessage = await storage.sendMessage(userId, receiverId, messageText);
+              const receiverWs = userConnections.get(receiverId);
+              if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+                receiverWs.send(JSON.stringify({
+                  type: 'new_message',
+                  message: savedMessage
+                }));
+              }
+            }
+            break;
+            
+          case 'voice_call_action':
+            // Voice call state changes
+            const { action, callId, targetId } = message;
+            const targetConnection = userConnections.get(targetId);
+            if (targetConnection && targetConnection.readyState === WebSocket.OPEN) {
+              targetConnection.send(JSON.stringify({
+                type: 'voice_call_action',
+                action: action,
+                callId: callId,
+                fromUserId: userId
+              }));
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      if (userId) {
+        userConnections.delete(userId);
+      }
+    });
+  });
+  
   return httpServer;
 }
