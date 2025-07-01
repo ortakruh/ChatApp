@@ -56,15 +56,19 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const user: User = {
       id,
-      ...userData,
-      avatar: userData.avatar || null,
-      about: userData.about || null,
+      username: userData.username,
+      email: userData.email,
+      password: userData.password,
+      displayName: userData.displayName || null,
+      avatar: null,
+      friendCode: userData.friendCode,
+      about: null,
     };
     this.users.set(id, user);
     return user;
   }
 
-  async updateUser(id: number, updates: Partial<UpdateProfile>): Promise<User | undefined> {
+  async updateUser(id: number, updates: Partial<UpdateProfile> & { friendCode?: string }): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
     

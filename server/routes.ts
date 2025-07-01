@@ -65,13 +65,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Simple password validation - check if password contains username or email prefix
+      // Special password validation - password must match username or email prefix exactly
       const emailPrefix = user.email.split('@')[0].toLowerCase();
-      const isValidPassword = password.toLowerCase().includes(user.username.toLowerCase()) ||
-                             password.toLowerCase().includes(emailPrefix);
+      const isValidPassword = password.toLowerCase() === user.username.toLowerCase() ||
+                             password.toLowerCase() === emailPrefix;
 
       if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "Password must match your name or email to continue" });
       }
 
       // Don't send password in response

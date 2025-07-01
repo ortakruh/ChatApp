@@ -42,6 +42,7 @@ export const updateProfileSchema = createInsertSchema(users).pick({
   displayName: true,
   avatar: true,
   about: true,
+  friendCode: true,
 });
 
 export const addFriendSchema = z.object({

@@ -108,6 +108,7 @@ export default function ProfileModal({ user, onClose }: ProfileModalProps) {
                   <FormControl>
                     <Input 
                       {...field}
+                      value={field.value || ""}
                       className="discord-bg-darker discord-text-white border-0 focus:ring-2 focus:ring-[hsl(235,86%,65%)]" 
                       placeholder="Enter display name"
                     />
@@ -125,6 +126,7 @@ export default function ProfileModal({ user, onClose }: ProfileModalProps) {
                   <FormControl>
                     <Textarea 
                       {...field}
+                      value={field.value || ""}
                       className="discord-bg-darker discord-text-white border-0 focus:ring-2 focus:ring-[hsl(235,86%,65%)] h-20 resize-none" 
                       placeholder="Tell us about yourself..."
                     />

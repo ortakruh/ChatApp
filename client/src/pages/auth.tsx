@@ -195,6 +195,10 @@ export default function AuthPage() {
                         {loginMutation.isPending ? "Logging in..." : "Log In"}
                       </Button>
                       
+                      <p className="discord-text text-xs mt-4 mb-2">
+                        Note: Password must match your name or email to continue
+                      </p>
+                      
                       <p className="discord-text text-sm mt-4">
                         Need an account? <Button type="button" variant="link" onClick={() => setActiveTab("register")} className="text-[hsl(235,86%,65%)] hover:underline p-0 h-auto">Register</Button>
                       </p>
@@ -241,6 +245,7 @@ export default function AuthPage() {
                             <FormControl>
                               <Input 
                                 {...field}
+                                value={field.value || ""}
                                 className="discord-bg-darker discord-text-white border-0 focus:ring-2 focus:ring-[hsl(235,86%,65%)]" 
                                 placeholder="Enter your display name"
                               />
