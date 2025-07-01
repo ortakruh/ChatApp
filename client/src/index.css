@@ -24,17 +24,17 @@
   --ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
 
-  /* Discord Custom Colors */
-  --discord-primary: hsl(235, 86%, 65%);
-  --discord-secondary: hsl(235, 85%, 64%);
-  --discord-dark: hsl(223, 7%, 20%);
-  --discord-darker: hsl(220, 7%, 17%);
-  --discord-darkest: hsl(221, 8%, 13%);
-  --discord-text: hsl(210, 2%, 73%);
-  --discord-white: hsl(0, 0%, 100%);
-  --discord-green: hsl(139, 47%, 43%);
-  --discord-red: hsl(359, 82%, 59%);
-  --discord-yellow: hsl(38, 96%, 54%);
+  /* ChatApp Custom Colors */
+  --chatapp-primary: hsl(220, 70%, 60%);
+  --chatapp-secondary: hsl(220, 65%, 55%);
+  --chatapp-dark: hsl(210, 15%, 25%);
+  --chatapp-darker: hsl(210, 20%, 20%);
+  --chatapp-darkest: hsl(210, 25%, 15%);
+  --chatapp-text: hsl(210, 15%, 70%);
+  --chatapp-white: hsl(0, 0%, 100%);
+  --chatapp-green: hsl(120, 60%, 50%);
+  --chatapp-red: hsl(0, 70%, 60%);
+  --chatapp-yellow: hsl(45, 90%, 60%);
 }
 
 .dark {
@@ -70,25 +70,29 @@
   }
 }
 
-/* Discord specific styles */
+/* ChatApp specific styles */
+.chatapp-gradient {
+  background: linear-gradient(135deg, hsl(220, 70%, 60%) 0%, hsl(220, 65%, 55%) 100%);
+}
+
 .discord-gradient {
-  background: linear-gradient(135deg, hsl(235, 85%, 64%) 0%, hsl(235, 86%, 65%) 100%);
+  background: linear-gradient(135deg, hsl(220, 70%, 60%) 0%, hsl(220, 65%, 55%) 100%);
 }
 
 .discord-bg-dark {
-  background-color: hsl(223, 7%, 20%);
+  background-color: hsl(210, 15%, 25%);
 }
 
 .discord-bg-darker {
-  background-color: hsl(220, 7%, 17%);
+  background-color: hsl(210, 20%, 20%);
 }
 
 .discord-bg-darkest {
-  background-color: hsl(221, 8%, 13%);
+  background-color: hsl(210, 25%, 15%);
 }
 
 .discord-text {
-  color: hsl(210, 2%, 73%);
+  color: hsl(210, 15%, 70%);
 }
 
 .discord-text-white {
@@ -96,15 +100,15 @@
 }
 
 .discord-primary {
-  background-color: hsl(235, 86%, 65%);
+  background-color: hsl(220, 70%, 60%);
 }
 
 .discord-primary-hover:hover {
-  background-color: hsl(235, 86%, 62%);
+  background-color: hsl(220, 70%, 55%);
 }
 
 .discord-green {
-  background-color: hsl(139, 47%, 43%);
+  background-color: hsl(120, 60%, 50%);
 }
 
 .discord-scrollbar::-webkit-scrollbar {

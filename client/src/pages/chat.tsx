@@ -267,13 +267,13 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen discord-bg-darkest flex">
+    <div className="h-screen bg-gray-900 flex">
       {/* Sidebar */}
-      <div className="w-60 discord-bg-darker flex flex-col">
+      <div className="w-60 bg-gray-800 flex flex-col">
         {/* Server/DM Header */}
-        <div className="p-4 border-b border-[hsl(221,8%,13%)]">
+        <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            <h2 className="discord-text-white font-semibold">Direct Messages</h2>
+            <h2 className="text-white font-semibold">Messages</h2>
             <Button variant="ghost" size="sm" className="discord-text hover:discord-text-white">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
@@ -283,29 +283,29 @@ export default function ChatPage() {
         </div>
 
         {/* Friends/DM List */}
-        <div className="flex-1 overflow-y-auto discord-scrollbar">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-2">
-            <div className="flex items-center px-2 py-2 rounded hover:discord-bg-dark cursor-pointer">
-              <svg className="w-5 h-5 discord-text mr-3" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center px-2 py-2 rounded hover:bg-gray-700 cursor-pointer">
+              <svg className="w-5 h-5 text-gray-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
               </svg>
-              <span className="discord-text">Friends</span>
+              <span className="text-gray-300">Friends</span>
             </div>
-            <div className="flex items-center px-2 py-2 rounded hover:discord-bg-dark cursor-pointer">
-              <svg className="w-5 h-5 discord-text mr-3" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center px-2 py-2 rounded hover:bg-gray-700 cursor-pointer">
+              <svg className="w-5 h-5 text-gray-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
               </svg>
-              <span className="discord-text">Library</span>
+              <span className="text-gray-300">Library</span>
             </div>
           </div>
           
           <div className="px-4 py-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="discord-text text-xs font-semibold uppercase">Direct Messages</span>
+              <span className="text-gray-400 text-xs font-semibold uppercase">Direct Messages</span>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="discord-text hover:discord-text-white"
+                className="text-gray-400 hover:text-white"
                 onClick={() => setShowAddFriendModal(true)}
               >
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -319,17 +319,17 @@ export default function ChatPage() {
               {friends.filter(friend => friend.status === 'accepted').map((friend) => (
                 <div 
                   key={friend.id} 
-                  className="flex items-center px-2 py-1 rounded hover:discord-bg-dark cursor-pointer"
+                  className="flex items-center px-2 py-1 rounded hover:bg-gray-700 cursor-pointer"
                   onClick={() => setSelectedFriend(friend)}
                 >
                   <Avatar className="w-8 h-8 mr-3">
                     <AvatarImage src={friend.avatar || undefined} />
-                    <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white text-xs">
+                    <AvatarFallback className="bg-blue-500 text-white text-xs">
                       {friend.displayName?.[0] || friend.username[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="discord-text text-sm">{friend.displayName || friend.username}</span>
-                  <div className="ml-auto w-2 h-2 rounded-full discord-green"></div>
+                  <span className="text-gray-300 text-sm">{friend.displayName || friend.username}</span>
+                  <div className="ml-auto w-2 h-2 rounded-full bg-green-500"></div>
                 </div>
               ))}
             </div>
@@ -337,25 +337,25 @@ export default function ChatPage() {
         </div>
 
         {/* User Area */}
-        <div className="p-2 discord-bg-darkest">
+        <div className="p-2 bg-gray-900">
           <div className="flex items-center">
             <Avatar 
               className="w-8 h-8 mr-3 cursor-pointer"
               onClick={() => setShowProfileModal(true)}
             >
               <AvatarImage src={currentUser.avatar || undefined} />
-              <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white">
+              <AvatarFallback className="bg-blue-500 text-white">
                 {currentUser.displayName?.[0] || currentUser.username[0]}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <div className="discord-text-white text-sm font-medium">
+              <div className="text-white text-sm font-medium">
                 {currentUser.displayName || currentUser.username}
               </div>
-              <div className="discord-text text-xs">#{currentUser.friendCode?.split('#')[1] || '1234'}</div>
+              <div className="text-gray-400 text-xs">#{currentUser.friendCode?.split('#')[1] || '1234'}</div>
             </div>
             <div className="flex space-x-1">
-              <Button variant="ghost" size="sm" className="discord-text hover:discord-text-white p-1">
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-1">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/>
                 </svg>
@@ -383,27 +383,27 @@ export default function ChatPage() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="discord-bg-darker p-4 border-b border-[hsl(221,8%,13%)]">
+        <div className="bg-gray-800 p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {selectedFriend ? (
                 <>
                   <Avatar className="w-8 h-8 mr-3">
                     <AvatarImage src={selectedFriend.avatar || undefined} />
-                    <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white">
+                    <AvatarFallback className="bg-blue-500 text-white">
                       {selectedFriend.displayName?.[0] || selectedFriend.username[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="discord-text-white font-semibold">
+                  <span className="text-white font-semibold">
                     {selectedFriend.displayName || selectedFriend.username}
                   </span>
                 </>
               ) : (
                 <>
-                  <svg className="w-6 h-6 discord-text mr-3" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-6 h-6 text-gray-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                   </svg>
-                  <span className="discord-text-white font-semibold">Friends</span>
+                  <span className="text-white font-semibold">Friends</span>
                 </>
               )}
             </div>
@@ -455,8 +455,8 @@ export default function ChatPage() {
                     <div key={message.id} className={`flex ${message.senderId === currentUser?.id ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                         message.senderId === currentUser?.id 
-                          ? 'discord-green text-white' 
-                          : 'discord-bg-dark discord-text-white'
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-700 text-white'
                       }`}>
                         <p className="text-sm">{message.message}</p>
                         <p className="text-xs opacity-75 mt-1">
@@ -469,19 +469,19 @@ export default function ChatPage() {
               </div>
               
               {/* Message Input */}
-              <div className="p-4 border-t border-[hsl(221,8%,13%)]">
+              <div className="p-4 border-t border-gray-700">
                 <div className="flex space-x-2">
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={`Message ${selectedFriend.displayName || selectedFriend.username}`}
-                    className="flex-1 discord-bg-dark border-none discord-text-white placeholder:discord-text"
+                    className="flex-1 bg-gray-700 border-none text-white placeholder:text-gray-400"
                   />
                   <Button 
                     onClick={sendMessage}
                     disabled={!messageText.trim()}
-                    className="discord-green text-white px-4 hover:bg-opacity-90"
+                    className="bg-blue-600 text-white px-4 hover:bg-blue-700"
                   >
                     Send
                   </Button>
