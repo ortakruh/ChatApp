@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { auth } from "@/lib/auth";
 import { User } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import ProfileModal from "@/components/profile-modal";
 import AddFriendModal from "@/components/add-friend-modal";
 
@@ -12,7 +14,10 @@ export default function ChatPage() {
   const [, navigate] = useLocation();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
   const currentUser = auth.getCurrentUser();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!currentUser) {
@@ -20,9 +25,31 @@ export default function ChatPage() {
     }
   }, [currentUser, navigate]);
 
-  const { data: friends = [] } = useQuery({
+  const { data: friends = [] } = useQuery<(User & { status: string; isRequestReceiver?: boolean; friendshipId: number })[]>({
     queryKey: ["/api/user/" + currentUser?.id + "/friends"],
     enabled: !!currentUser,
+    refetchInterval: 2000, // Refresh every 2 seconds for real-time updates
+  });
+
+  const acceptFriendMutation = useMutation({
+    mutationFn: async ({ friendId, status }: { friendId: number; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/user/${currentUser?.id}/friends/${friendId}`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/user/${currentUser?.id}/friends`] });
+      toast({
+        title: "Friend request updated",
+        description: "Friend request has been processed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update friend request",
+        variant: "destructive",
+      });
+    },
   });
 
   if (!currentUser) {
@@ -84,7 +111,7 @@ export default function ChatPage() {
             
             {/* Friend List */}
             <div className="space-y-1">
-              {friends.map((friend: User & { status: string }) => (
+              {friends.filter(friend => friend.status === 'accepted').map((friend) => (
                 <div key={friend.id} className="flex items-center px-2 py-1 rounded hover:discord-bg-dark cursor-pointer">
                   <Avatar className="w-8 h-8 mr-3">
                     <AvatarImage src={friend.avatar || undefined} />
@@ -93,9 +120,7 @@ export default function ChatPage() {
                     </AvatarFallback>
                   </Avatar>
                   <span className="discord-text text-sm">{friend.displayName || friend.username}</span>
-                  <div className={`ml-auto w-2 h-2 rounded-full ${
-                    friend.status === 'accepted' ? 'discord-green' : 'bg-gray-500'
-                  }`}></div>
+                  <div className="ml-auto w-2 h-2 rounded-full discord-green"></div>
                 </div>
               ))}
             </div>
@@ -182,16 +207,48 @@ export default function ChatPage() {
           {/* Friends List */}
           <div className="flex-1 p-6">
             <div className="flex items-center space-x-6 mb-6">
-              <Button variant="ghost" className="discord-text-white font-medium border-b-2 border-[hsl(235,86%,65%)] pb-1 hover:bg-transparent rounded-none">
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab("all")}
+                className={`font-medium pb-1 hover:bg-transparent rounded-none ${
+                  activeTab === "all" 
+                    ? "discord-text-white border-b-2 border-[hsl(235,86%,65%)]" 
+                    : "discord-text hover:discord-text-white"
+                }`}
+              >
                 All
               </Button>
-              <Button variant="ghost" className="discord-text hover:discord-text-white hover:bg-transparent">
+              <Button 
+                variant="ghost"
+                onClick={() => setActiveTab("online")} 
+                className={`hover:bg-transparent ${
+                  activeTab === "online" 
+                    ? "discord-text-white border-b-2 border-[hsl(235,86%,65%)]" 
+                    : "discord-text hover:discord-text-white"
+                }`}
+              >
                 Online
               </Button>
-              <Button variant="ghost" className="discord-text hover:discord-text-white hover:bg-transparent">
+              <Button 
+                variant="ghost"
+                onClick={() => setActiveTab("pending")} 
+                className={`hover:bg-transparent ${
+                  activeTab === "pending" 
+                    ? "discord-text-white border-b-2 border-[hsl(235,86%,65%)]" 
+                    : "discord-text hover:discord-text-white"
+                }`}
+              >
                 Pending
               </Button>
-              <Button variant="ghost" className="discord-text hover:discord-text-white hover:bg-transparent">
+              <Button 
+                variant="ghost"
+                onClick={() => setActiveTab("blocked")} 
+                className={`hover:bg-transparent ${
+                  activeTab === "blocked" 
+                    ? "discord-text-white border-b-2 border-[hsl(235,86%,65%)]" 
+                    : "discord-text hover:discord-text-white"
+                }`}
+              >
                 Blocked
               </Button>
               <Button 
@@ -202,55 +259,123 @@ export default function ChatPage() {
               </Button>
             </div>
 
-            <div className="border-b border-[hsl(221,8%,13%)] pb-2 mb-4">
-              <span className="discord-text text-sm font-medium">ONLINE — {friends.filter((f: any) => f.status === 'accepted').length}</span>
-            </div>
-
-            {/* Friends List */}
-            <div className="space-y-2">
-              {friends.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">👥</div>
-                  <p className="discord-text text-sm">
-                    No friends yet.<br/>
-                    Use the "Add Friend" button to start connecting!
-                  </p>
+            {/* Friends Content */}
+            {activeTab === "all" && (
+              <>
+                <div className="border-b border-[hsl(221,8%,13%)] pb-2 mb-4">
+                  <span className="discord-text text-sm font-medium">ONLINE — {friends.filter(f => f.status === 'accepted').length}</span>
                 </div>
-              ) : (
-                friends.map((friend: User & { status: string }) => (
-                  <div key={friend.id} className="flex items-center justify-between p-3 rounded hover:discord-bg-dark">
-                    <div className="flex items-center">
-                      <Avatar className="w-10 h-10 mr-4">
-                        <AvatarImage src={friend.avatar || undefined} />
-                        <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white">
-                          {friend.displayName?.[0] || friend.username[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="discord-text-white font-medium">
-                          {friend.displayName || friend.username}
+                <div className="space-y-2">
+                  {friends.filter(f => f.status === 'accepted').length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">👥</div>
+                      <p className="discord-text text-sm">
+                        No friends yet.<br/>
+                        Use the "Add Friend" button to start connecting!
+                      </p>
+                    </div>
+                  ) : (
+                    friends.filter(f => f.status === 'accepted').map((friend) => (
+                      <div key={friend.id} className="flex items-center justify-between p-3 rounded hover:discord-bg-dark">
+                        <div className="flex items-center">
+                          <Avatar className="w-10 h-10 mr-4">
+                            <AvatarImage src={friend.avatar || undefined} />
+                            <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white">
+                              {friend.displayName?.[0] || friend.username[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="discord-text-white font-medium">
+                              {friend.displayName || friend.username}
+                            </div>
+                            <div className="discord-text text-sm">Online</div>
+                          </div>
                         </div>
-                        <div className="discord-text text-sm">
-                          {friend.status === 'accepted' ? 'Online' : 'Pending'}
+                        <div className="flex space-x-2">
+                          <Button variant="ghost" size="sm" className="discord-bg-dark p-2 rounded-full discord-text hover:discord-text-white">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
+                            </svg>
+                          </Button>
+                          <Button variant="ghost" size="sm" className="discord-bg-dark p-2 rounded-full discord-text hover:discord-text-white">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                            </svg>
+                          </Button>
                         </div>
                       </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeTab === "pending" && (
+              <>
+                <div className="border-b border-[hsl(221,8%,13%)] pb-2 mb-4">
+                  <span className="discord-text text-sm font-medium">PENDING — {friends.filter(f => f.status === 'pending').length}</span>
+                </div>
+                <div className="space-y-2">
+                  {friends.filter(f => f.status === 'pending').length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">⏳</div>
+                      <p className="discord-text text-sm">
+                        No pending friend requests.
+                      </p>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm" className="discord-bg-dark p-2 rounded-full discord-text hover:discord-text-white">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
-                        </svg>
-                      </Button>
-                      <Button variant="ghost" size="sm" className="discord-bg-dark p-2 rounded-full discord-text hover:discord-text-white">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ) : (
+                    friends.filter(f => f.status === 'pending').map((friend) => (
+                      <div key={friend.id} className="flex items-center justify-between p-3 rounded hover:discord-bg-dark">
+                        <div className="flex items-center">
+                          <Avatar className="w-10 h-10 mr-4">
+                            <AvatarImage src={friend.avatar || undefined} />
+                            <AvatarFallback className="bg-[hsl(235,86%,65%)] text-white">
+                              {friend.displayName?.[0] || friend.username[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="discord-text-white font-medium">
+                              {friend.displayName || friend.username}
+                            </div>
+                            <div className="discord-text text-sm">
+                              {friend.isRequestReceiver ? 'Incoming Friend Request' : 'Outgoing Friend Request'}
+                            </div>
+                          </div>
+                        </div>
+                        {friend.isRequestReceiver && (
+                          <div className="flex space-x-2">
+                            <Button 
+                              onClick={() => acceptFriendMutation.mutate({ friendId: friend.id, status: 'accepted' })}
+                              className="discord-green text-white px-3 py-1 rounded text-sm hover:bg-opacity-90"
+                              disabled={acceptFriendMutation.isPending}
+                            >
+                              Accept
+                            </Button>
+                            <Button 
+                              onClick={() => acceptFriendMutation.mutate({ friendId: friend.id, status: 'rejected' })}
+                              variant="outline"
+                              className="border-gray-500 text-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-700"
+                              disabled={acceptFriendMutation.isPending}
+                            >
+                              Ignore
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {(activeTab === "online" || activeTab === "blocked") && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="discord-text text-sm">
+                  This section is not implemented yet.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Activity Sidebar */}

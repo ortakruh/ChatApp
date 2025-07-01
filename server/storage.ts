@@ -77,18 +77,23 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
-  async getFriendsByUserId(userId: number): Promise<(User & { status: string })[]> {
+  async getFriendsByUserId(userId: number): Promise<(User & { status: string; isRequestReceiver?: boolean; friendshipId: number })[]> {
     const userFriendships = Array.from(this.friendships.values()).filter(
       friendship => friendship.userId === userId || friendship.friendId === userId
     );
 
-    const friends: (User & { status: string })[] = [];
+    const friends: (User & { status: string; isRequestReceiver?: boolean; friendshipId: number })[] = [];
     
     for (const friendship of userFriendships) {
       const friendId = friendship.userId === userId ? friendship.friendId : friendship.userId;
       const friend = this.users.get(friendId);
       if (friend) {
-        friends.push({ ...friend, status: friendship.status });
+        friends.push({ 
+          ...friend, 
+          status: friendship.status,
+          isRequestReceiver: friendship.friendId === userId, // true if this user received the request
+          friendshipId: friendship.id
+        });
       }
     }
 

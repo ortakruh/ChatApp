@@ -125,7 +125,24 @@ This is a full-stack Discord clone web application built with modern web technol
 
 ## Changelog
 - July 01, 2025. Initial setup
+- July 01, 2025. Major fixes and improvements:
+  - Fixed login validation to properly check password matching username/email
+  - Implemented friend request system with pending/accept/reject functionality
+  - Added remember me feature with localStorage persistence
+  - Added real-time updates for friend requests (2-second polling)
+  - Fixed friend code validation and case handling
+  - Implemented tabbed friend interface (All, Online, Pending, Blocked)
+  - Added proper friend request flow with accept/reject buttons
+  - Fixed TypeScript errors and data type handling
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Issues Fixed
+- Login system now properly validates password must match username or email
+- Friend requests work with proper verification system
+- Remember me checkbox prevents logout on page refresh
+- Real-time friend request updates without manual page refresh
+- Pending requests show proper user names and accept/reject options
+- Friend codes now work with case-insensitive matching

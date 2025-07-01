@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +20,7 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
+  const [rememberMe, setRememberMe] = useState(false);
 
   const loginForm = useForm<LoginUser>({
     resolver: zodResolver(loginUserSchema),
@@ -45,7 +47,7 @@ export default function AuthPage() {
       return response.json();
     },
     onSuccess: (user) => {
-      auth.setCurrentUser(user);
+      auth.setCurrentUser(user, rememberMe);
       toast({
         title: "Welcome back!",
         description: "Successfully logged in.",
@@ -178,6 +180,18 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="rememberMe"
+                          checked={rememberMe}
+                          onCheckedChange={(checked) => setRememberMe(checked === true)}
+                          className="border-[hsl(235,86%,65%)] data-[state=checked]:bg-[hsl(235,86%,65%)]"
+                        />
+                        <Label htmlFor="rememberMe" className="discord-text text-sm">
+                          Remember me
+                        </Label>
+                      </div>
                       
                       <Button 
                         type="button" 

@@ -67,8 +67,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Special password validation - password must match username or email prefix exactly
       const emailPrefix = user.email.split('@')[0].toLowerCase();
-      const isValidPassword = password.toLowerCase() === user.username.toLowerCase() ||
-                             password.toLowerCase() === emailPrefix;
+      const isValidPassword = password === user.password && (
+        password.toLowerCase() === user.username.toLowerCase() ||
+        password.toLowerCase() === emailPrefix
+      );
 
       if (!isValidPassword) {
         return res.status(401).json({ message: "Password must match your name or email to continue" });
@@ -144,7 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const { friendCode } = addFriendSchema.parse(req.body);
       
-      const friend = await storage.getUserByFriendCode(friendCode);
+      // Clean up the friend code input (remove spaces, convert to uppercase)
+      const cleanFriendCode = friendCode.trim().toUpperCase();
+      
+      const friend = await storage.getUserByFriendCode(cleanFriendCode);
       
       if (!friend) {
         return res.status(404).json({ message: "User not found with this friend code" });
@@ -157,11 +162,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if friendship already exists
       const existingFriendship = await storage.getFriendship(userId, friend.id);
       if (existingFriendship) {
-        return res.status(400).json({ message: "Friend request already exists or you are already friends" });
+        if (existingFriendship.status === 'pending') {
+          return res.status(400).json({ message: "Friend request already sent" });
+        } else if (existingFriendship.status === 'accepted') {
+          return res.status(400).json({ message: "You are already friends" });
+        }
       }
 
       const friendship = await storage.createFriendRequest(userId, friend.id);
-      res.json(friendship);
+      res.json({ ...friendship, friend });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -190,6 +199,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ friendCode: user.friendCode });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Accept/Reject friend request
+  app.patch("/api/user/:id/friends/:friendId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const friendId = parseInt(req.params.friendId);
+      const { status } = req.body;
+
+      if (!['accepted', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be 'accepted' or 'rejected'" });
+      }
+
+      const success = await storage.updateFriendshipStatus(userId, friendId, status);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Friend request not found" });
+      }
+
+      res.json({ success: true, status });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
