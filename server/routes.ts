@@ -246,17 +246,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const messageData = sendMessageSchema.parse(req.body);
       
-      // For now, we'll get sender ID from request body or headers
-      // In a real app, this should come from authenticated session
+      // Get sender ID from headers or request body
       const senderId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : messageData.senderId;
       
       if (!senderId) {
         return res.status(401).json({ message: "Not authenticated" });
       }
+
+      // Verify sender exists
+      const sender = await storage.getUser(senderId);
+      if (!sender) {
+        return res.status(404).json({ message: "Sender not found" });
+      }
+
+      // Verify receiver exists
+      const receiver = await storage.getUser(messageData.receiverId);
+      if (!receiver) {
+        return res.status(404).json({ message: "Receiver not found" });
+      }
       
       const message = await storage.sendMessage(senderId, messageData.receiverId, messageData.message);
       res.json(message);
     } catch (error) {
+      console.error('Message sending error:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -359,12 +371,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Real-time message delivery
             const { receiverId, messageText } = message;
             if (userId) {
-              const savedMessage = await storage.sendMessage(userId, receiverId, messageText);
-              const receiverWs = userConnections.get(receiverId);
-              if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
-                receiverWs.send(JSON.stringify({
-                  type: 'new_message',
+              try {
+                const savedMessage = await storage.sendMessage(userId, receiverId, messageText);
+                const receiverWs = userConnections.get(receiverId);
+                if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+                  receiverWs.send(JSON.stringify({
+                    type: 'new_message',
+                    message: savedMessage
+                  }));
+                }
+                // Also send back to sender for confirmation
+                ws.send(JSON.stringify({
+                  type: 'message_sent',
                   message: savedMessage
+                }));
+              } catch (error) {
+                console.error('Error sending message via WebSocket:', error);
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Failed to send message'
                 }));
               }
             }

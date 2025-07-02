@@ -51,47 +51,67 @@ export default function ChatPage() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-      ws.send(JSON.stringify({ type: 'auth', userId: currentUser.id }));
-    };
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        ws.send(JSON.stringify({ type: 'auth', userId: currentUser.id }));
+      };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
 
-      switch (data.type) {
-        case 'new_message':
-          // Refresh messages when new message received
-          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-          break;
+          switch (data.type) {
+            case 'new_message':
+              // Refresh messages when new message received
+              queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+              break;
 
-        case 'voice_call_action':
-          if (data.action === 'start') {
-            setIncomingCall(data);
-          } else if (data.action === 'accept') {
-            setIsInVoiceCall(true);
-            startVoiceCall(data.fromUserId);
-          } else if (data.action === 'reject' || data.action === 'end') {
-            setIsInVoiceCall(false);
-            setIncomingCall(null);
-            endVoiceCall();
+            case 'voice_call_action':
+              if (data.action === 'start') {
+                setIncomingCall(data);
+              } else if (data.action === 'accept') {
+                setIsInVoiceCall(true);
+                startVoiceCall(data.fromUserId);
+              } else if (data.action === 'reject' || data.action === 'end') {
+                setIsInVoiceCall(false);
+                setIncomingCall(null);
+                endVoiceCall();
+              }
+              break;
+
+            case 'voice_call_signal':
+              handleVoiceSignal(data.signal, data.fromUserId);
+              break;
           }
-          break;
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
 
-        case 'voice_call_signal':
-          handleVoiceSignal(data.signal, data.fromUserId);
-          break;
-      }
+      ws.onclose = () => {
+        console.log("WebSocket disconnected, attempting to reconnect...");
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      wsRef.current = ws;
     };
 
-    wsRef.current = ws;
+    connectWebSocket();
 
     return () => {
-      ws.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
   }, [currentUser, queryClient]);
 
@@ -204,9 +224,15 @@ export default function ChatPage() {
 
   // Messaging functions
   const sendMessage = async () => {
-    if (!messageText.trim() || !selectedFriend || !wsRef.current) return;
+    if (!messageText.trim() || !selectedFriend || !currentUser) return;
 
     try {
+      console.log('Sending message:', {
+        senderId: currentUser.id,
+        receiverId: selectedFriend.id,
+        message: messageText.trim()
+      });
+
       // Send via API first
       const response = await fetch('/api/messages', {
         method: 'POST',
@@ -222,13 +248,15 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send message');
       }
 
       const sentMessage = await response.json();
+      console.log('Message sent successfully:', sentMessage);
 
       // Send via WebSocket for real-time delivery
-      if (wsRef.current) {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({
           type: 'message',
           receiverId: selectedFriend.id,
@@ -238,15 +266,15 @@ export default function ChatPage() {
 
       setMessageText("");
 
-      // Also invalidate queries to refresh the UI
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-      }, 100);
+      // Refresh messages immediately
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/messages", currentUser.id, selectedFriend.id] 
+      });
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Could not send message",
+        description: error.message || "Could not send message",
         variant: "destructive",
       });
     }

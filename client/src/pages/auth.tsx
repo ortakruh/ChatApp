@@ -112,7 +112,7 @@ export default function AuthPage() {
 
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
         <div className="flex flex-col lg:flex-row items-center justify-center gap-12 w-full max-w-6xl">
-          
+
           {/* Auth Form */}
           <Card className="discord-bg-dark w-full max-w-md">
             <CardContent className="p-8">
@@ -137,7 +137,7 @@ export default function AuthPage() {
                     <h2 className="discord-text-white text-2xl font-bold mb-2">Welcome back!</h2>
                     <p className="discord-text mb-6">We're so excited to see you again!</p>
                   </div>
-                  
+
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                       <FormField
@@ -159,7 +159,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={loginForm.control}
                         name="password"
@@ -180,7 +180,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <div className="flex items-center space-x-2">
                         <Checkbox 
                           id="rememberMe"
@@ -192,7 +192,7 @@ export default function AuthPage() {
                           Remember me
                         </Label>
                       </div>
-                      
+
                       <Button 
                         type="button" 
                         variant="link" 
@@ -200,7 +200,7 @@ export default function AuthPage() {
                       >
                         Forgot your password?
                       </Button>
-                      
+
                       <Button 
                         type="submit" 
                         className="w-full discord-primary discord-primary-hover text-white py-3 mt-6 font-medium"
@@ -208,11 +208,11 @@ export default function AuthPage() {
                       >
                         {loginMutation.isPending ? "Logging in..." : "Log In"}
                       </Button>
-                      
+
                       <p className="discord-text text-xs mt-4 mb-2">
                         Note: Password must match your name or email to continue
                       </p>
-                      
+
                       <p className="discord-text text-sm mt-4">
                         Need an account? <Button type="button" variant="link" onClick={() => setActiveTab("register")} className="text-[hsl(235,86%,65%)] hover:underline p-0 h-auto">Register</Button>
                       </p>
@@ -224,7 +224,7 @@ export default function AuthPage() {
                   <div className="mb-6">
                     <h2 className="discord-text-white text-2xl font-bold">Create an account</h2>
                   </div>
-                  
+
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                       <FormField
@@ -247,7 +247,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={registerForm.control}
                         name="displayName"
@@ -268,7 +268,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={registerForm.control}
                         name="username"
@@ -288,7 +288,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={registerForm.control}
                         name="password"
@@ -330,11 +330,11 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <p className="discord-text text-xs mb-4">
                         By registering, you agree to Discord's <Button variant="link" className="text-[hsl(235,86%,65%)] hover:underline p-0 h-auto text-xs">Terms of Service</Button> and <Button variant="link" className="text-[hsl(235,86%,65%)] hover:underline p-0 h-auto text-xs">Privacy Policy</Button>.
                       </p>
-                      
+
                       <Button 
                         type="submit" 
                         className="w-full discord-primary discord-primary-hover text-white py-3 font-medium"
@@ -342,7 +342,7 @@ export default function AuthPage() {
                       >
                         {registerMutation.isPending ? "Creating Account..." : "Continue"}
                       </Button>
-                      
+
                       <p className="discord-text text-sm mt-4">
                         <Button type="button" variant="link" onClick={() => setActiveTab("login")} className="text-[hsl(235,86%,65%)] hover:underline p-0 h-auto">Already have an account?</Button>
                       </p>
