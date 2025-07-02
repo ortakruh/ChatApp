@@ -33,7 +33,33 @@ export const voiceCalls = pgTable("voice_calls", {
   id: serial("id").primaryKey(),
   callerId: integer("caller_id").notNull(),
   receiverId: integer("receiver_id").notNull(),
+  groupId: integer("group_id"),
   status: text("status").notNull(), // 'calling', 'active', 'ended'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const groups = pgTable("groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  avatar: text("avatar"),
+  ownerId: integer("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const groupMembers = pgTable("group_members", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull(),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull(), // 'owner', 'admin', 'member'
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const groupMessages = pgTable("group_messages", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull(),
+  senderId: integer("sender_id").notNull(),
+  message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -72,8 +98,25 @@ export const sendMessageSchema = z.object({
 });
 
 export const voiceCallSchema = z.object({
-  receiverId: z.number(),
+  receiverId: z.number().optional(),
+  groupId: z.number().optional(),
   action: z.enum(["start", "accept", "reject", "end"]),
+});
+
+export const createGroupSchema = z.object({
+  name: z.string().min(1, "Group name is required"),
+  description: z.string().optional(),
+  avatar: z.string().optional(),
+});
+
+export const addGroupMemberSchema = z.object({
+  userId: z.number(),
+  role: z.enum(["member", "admin"]).default("member"),
+});
+
+export const sendGroupMessageSchema = z.object({
+  groupId: z.number(),
+  message: z.string().min(1, "Message cannot be empty"),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -82,7 +125,13 @@ export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 export type AddFriend = z.infer<typeof addFriendSchema>;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
 export type VoiceCall = z.infer<typeof voiceCallSchema>;
+export type CreateGroup = z.infer<typeof createGroupSchema>;
+export type AddGroupMember = z.infer<typeof addGroupMemberSchema>;
+export type SendGroupMessage = z.infer<typeof sendGroupMessageSchema>;
 export type User = typeof users.$inferSelect;
 export type Friendship = typeof friendships.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type VoiceCallData = typeof voiceCalls.$inferSelect;
+export type Group = typeof groups.$inferSelect;
+export type GroupMember = typeof groupMembers.$inferSelect;
+export type GroupMessage = typeof groupMessages.$inferSelect;

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertUserSchema, loginUserSchema, updateProfileSchema, addFriendSchema, sendMessageSchema, voiceCallSchema } from "@shared/schema";
+import { insertUserSchema, loginUserSchema, updateProfileSchema, addFriendSchema, sendMessageSchema, voiceCallSchema, createGroupSchema, addGroupMemberSchema, sendGroupMessageSchema } from "@shared/schema";
 import { z } from "zod";
 
 function generateFriendCode(): string {
@@ -331,6 +331,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Group routes
+  // Create group
+  app.post("/api/groups", async (req, res) => {
+    try {
+      const groupData = createGroupSchema.parse(req.body);
+      const ownerId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null;
+      
+      if (!ownerId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const group = await storage.createGroup(ownerId, groupData);
+      res.json(group);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get user's groups
+  app.get("/api/user/:id/groups", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const groups = await storage.getUserGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get group details
+  app.get("/api/groups/:id", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const group = await storage.getGroup(groupId);
+      
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      const members = await storage.getGroupMembers(groupId);
+      res.json({ ...group, members });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Add group member
+  app.post("/api/groups/:id/members", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const memberData = addGroupMemberSchema.parse(req.body);
+      
+      const member = await storage.addGroupMember(groupId, memberData.userId, memberData.role);
+      res.json(member);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get group members
+  app.get("/api/groups/:id/members", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const members = await storage.getGroupMembers(groupId);
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Remove group member
+  app.delete("/api/groups/:id/members/:userId", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const userId = parseInt(req.params.userId);
+      
+      const success = await storage.removeGroupMember(groupId, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get group messages
+  app.get("/api/groups/:id/messages", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const messages = await storage.getGroupMessages(groupId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Send group message
+  app.post("/api/groups/:id/messages", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { message } = sendGroupMessageSchema.parse(req.body);
+      const senderId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null;
+      
+      if (!senderId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const groupMessage = await storage.sendGroupMessage(senderId, groupId, message);
+      res.json(groupMessage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // WebSocket server for real-time communication
@@ -397,15 +522,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
           case 'voice_call_action':
             // Voice call state changes
-            const { action, callId, targetId } = message;
-            const targetConnection = userConnections.get(targetId);
-            if (targetConnection && targetConnection.readyState === WebSocket.OPEN) {
-              targetConnection.send(JSON.stringify({
-                type: 'voice_call_action',
-                action: action,
-                callId: callId,
-                fromUserId: userId
-              }));
+            const { action, callId, targetId, groupId } = message;
+            
+            if (groupId) {
+              // Group voice call - notify all group members
+              const groupMembers = await storage.getGroupMembers(groupId);
+              groupMembers.forEach(member => {
+                if (member.id !== userId) {
+                  const memberConnection = userConnections.get(member.id);
+                  if (memberConnection && memberConnection.readyState === WebSocket.OPEN) {
+                    memberConnection.send(JSON.stringify({
+                      type: 'voice_call_action',
+                      action: action,
+                      callId: callId,
+                      groupId: groupId,
+                      fromUserId: userId
+                    }));
+                  }
+                }
+              });
+            } else if (targetId) {
+              // Direct voice call
+              const targetConnection = userConnections.get(targetId);
+              if (targetConnection && targetConnection.readyState === WebSocket.OPEN) {
+                targetConnection.send(JSON.stringify({
+                  type: 'voice_call_action',
+                  action: action,
+                  callId: callId,
+                  fromUserId: userId
+                }));
+              }
+            }
+            break;
+
+          case 'group_message':
+            // Real-time group message delivery
+            const { groupId: msgGroupId, messageText: groupMessageText } = message;
+            if (userId) {
+              try {
+                const savedMessage = await storage.sendGroupMessage(userId, msgGroupId, groupMessageText);
+                const groupMembers = await storage.getGroupMembers(msgGroupId);
+                
+                groupMembers.forEach(member => {
+                  const memberConnection = userConnections.get(member.id);
+                  if (memberConnection && memberConnection.readyState === WebSocket.OPEN) {
+                    memberConnection.send(JSON.stringify({
+                      type: 'new_group_message',
+                      message: savedMessage,
+                      groupId: msgGroupId
+                    }));
+                  }
+                });
+              } catch (error) {
+                console.error('Error sending group message via WebSocket:', error);
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Failed to send group message'
+                }));
+              }
             }
             break;
         }
