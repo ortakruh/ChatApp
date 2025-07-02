@@ -487,13 +487,90 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {/* Voice Call Interface */}
+        {isInVoiceCall && selectedFriend && (
+          <div className="bg-gray-900 p-6 border-b border-gray-700">
+            <div className="flex items-center justify-center space-x-8">
+              {/* Current User */}
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <Avatar className="w-20 h-20 mb-2">
+                    <AvatarImage src={currentUser.avatar || undefined} />
+                    <AvatarFallback className="bg-blue-500 text-white text-lg">
+                      {currentUser.displayName?.[0] || currentUser.username[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-gray-900 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-white text-sm font-medium">
+                  {currentUser.displayName || currentUser.username}
+                </span>
+              </div>
+
+              {/* Friend */}
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <Avatar className="w-20 h-20 mb-2">
+                    <AvatarImage src={selectedFriend.avatar || undefined} />
+                    <AvatarFallback className="bg-blue-500 text-white text-lg">
+                      {selectedFriend.displayName?.[0] || selectedFriend.username[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-gray-900 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 115 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-white text-sm font-medium">
+                  {selectedFriend.displayName || selectedFriend.username}
+                </span>
+              </div>
+            </div>
+
+            {/* Voice Call Controls */}
+            <div className="flex items-center justify-center space-x-4 mt-6">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 115 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"/>
+                </svg>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                </svg>
+              </Button>
+              <Button 
+                onClick={endVoiceCall}
+                className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                </svg>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Main Content Area */}
         <div className="flex-1 flex">
           {selectedFriend ? (
             /* Messaging Interface */
             <div className="flex-1 flex flex-col">
               {/* Messages Area */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              <div className={`flex-1 p-4 overflow-y-auto space-y-4 ${isInVoiceCall ? 'max-h-60' : ''}`}>
                 {messages.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">💬</div>
