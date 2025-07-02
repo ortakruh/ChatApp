@@ -66,6 +66,7 @@ export const addFriendSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
+  senderId: z.number().optional(),
   receiverId: z.number(),
   message: z.string().min(1, "Message cannot be empty"),
 });

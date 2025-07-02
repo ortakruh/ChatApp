@@ -2,15 +2,24 @@ import { User } from "@shared/schema";
 
 let currentUser: User | null = null;
 
-// Initialize from localStorage on load
+// Initialize from localStorage or sessionStorage on load
 const initializeAuth = () => {
-  const rememberMe = localStorage.getItem('rememberMe') === 'true';
-  const savedUser = localStorage.getItem('currentUser');
+  // First check sessionStorage (current session)
+  let savedUser = sessionStorage.getItem('currentUser');
   
-  if (rememberMe && savedUser) {
+  if (!savedUser) {
+    // Then check localStorage (persistent login)
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    if (rememberMe) {
+      savedUser = localStorage.getItem('currentUser');
+    }
+  }
+  
+  if (savedUser) {
     try {
       currentUser = JSON.parse(savedUser);
     } catch (error) {
+      sessionStorage.removeItem('currentUser');
       localStorage.removeItem('currentUser');
       localStorage.removeItem('rememberMe');
     }
@@ -25,20 +34,27 @@ export const auth = {
   setCurrentUser: (user: User | null, rememberMe = false) => {
     currentUser = user;
     
-    if (rememberMe && user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('rememberMe', 'true');
-    } else if (user && localStorage.getItem('rememberMe') === 'true') {
-      // Update existing saved user
-      localStorage.setItem('currentUser', JSON.stringify(user));
-    } else if (!rememberMe) {
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('rememberMe');
+    if (user) {
+      // Always save to sessionStorage for current session
+      sessionStorage.setItem('currentUser', JSON.stringify(user));
+      
+      if (rememberMe) {
+        // Save to localStorage for persistence across browser sessions
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('rememberMe', 'true');
+      }
+    } else {
+      sessionStorage.removeItem('currentUser');
+      if (!rememberMe) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('rememberMe');
+      }
     }
   },
   isAuthenticated: (): boolean => currentUser !== null,
   logout: () => {
     currentUser = null;
+    sessionStorage.removeItem('currentUser');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('rememberMe');
   }

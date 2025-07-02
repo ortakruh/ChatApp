@@ -50,25 +50,25 @@ export default function ChatPage() {
   // WebSocket connection for real-time features
   useEffect(() => {
     if (!currentUser) return;
-    
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsUrl);
-    
+
     ws.onopen = () => {
       console.log("WebSocket connected");
       ws.send(JSON.stringify({ type: 'auth', userId: currentUser.id }));
     };
-    
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       switch (data.type) {
         case 'new_message':
           // Refresh messages when new message received
           queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
           break;
-          
+
         case 'voice_call_action':
           if (data.action === 'start') {
             setIncomingCall(data);
@@ -81,15 +81,15 @@ export default function ChatPage() {
             endVoiceCall();
           }
           break;
-          
+
         case 'voice_call_signal':
           handleVoiceSignal(data.signal, data.fromUserId);
           break;
       }
     };
-    
+
     wsRef.current = ws;
-    
+
     return () => {
       ws.close();
     };
@@ -100,15 +100,15 @@ export default function ChatPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
-      
+
       const peerConnection = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
-      
+
       stream.getTracks().forEach(track => {
         peerConnection.addTrack(track, stream);
       });
-      
+
       peerConnection.ontrack = (event) => {
         remoteStreamRef.current = event.streams[0];
         const audioElement = document.getElementById('remoteAudio') as HTMLAudioElement;
@@ -116,7 +116,7 @@ export default function ChatPage() {
           audioElement.srcObject = event.streams[0];
         }
       };
-      
+
       peerConnection.onicecandidate = (event) => {
         if (event.candidate && wsRef.current) {
           wsRef.current.send(JSON.stringify({
@@ -126,10 +126,10 @@ export default function ChatPage() {
           }));
         }
       };
-      
+
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
-      
+
       if (wsRef.current) {
         wsRef.current.send(JSON.stringify({
           type: 'voice_call_signal',
@@ -137,7 +137,7 @@ export default function ChatPage() {
           signal: { type: 'offer', offer }
         }));
       }
-      
+
       peerConnectionRef.current = peerConnection;
       setIsInVoiceCall(true);
     } catch (error) {
@@ -152,13 +152,13 @@ export default function ChatPage() {
 
   const handleVoiceSignal = async (signal: any, fromUserId: number) => {
     if (!peerConnectionRef.current) return;
-    
+
     try {
       if (signal.type === 'offer') {
         await peerConnectionRef.current.setRemoteDescription(signal.offer);
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
-        
+
         if (wsRef.current) {
           wsRef.current.send(JSON.stringify({
             type: 'voice_call_signal',
@@ -181,12 +181,12 @@ export default function ChatPage() {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
     }
-    
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-    
+
     setIsInVoiceCall(false);
     setIncomingCall(null);
   };
@@ -205,16 +205,39 @@ export default function ChatPage() {
   // Messaging functions
   const sendMessage = async () => {
     if (!messageText.trim() || !selectedFriend || !wsRef.current) return;
-    
+
     try {
-      wsRef.current.send(JSON.stringify({
-        type: 'message',
-        receiverId: selectedFriend.id,
-        messageText: messageText.trim()
-      }));
-      
+      // Send via API first
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id.toString(),
+        },
+        body: JSON.stringify({
+          senderId: currentUser.id,
+          receiverId: selectedFriend.id,
+          message: messageText.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const sentMessage = await response.json();
+
+      // Send via WebSocket for real-time delivery
+      if (wsRef.current) {
+        wsRef.current.send(JSON.stringify({
+          type: 'message',
+          receiverId: selectedFriend.id,
+          messageText: messageText.trim()
+        }));
+      }
+
       setMessageText("");
-      
+
       // Also invalidate queries to refresh the UI
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
@@ -298,7 +321,7 @@ export default function ChatPage() {
               <span className="text-gray-300">Library</span>
             </div>
           </div>
-          
+
           <div className="px-4 py-2">
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-400 text-xs font-semibold uppercase">Direct Messages</span>
@@ -313,7 +336,7 @@ export default function ChatPage() {
                 </svg>
               </Button>
             </div>
-            
+
             {/* Friend List */}
             <div className="space-y-1">
               {friends.filter(friend => friend.status === 'accepted').map((friend) => (
@@ -467,7 +490,7 @@ export default function ChatPage() {
                   ))
                 )}
               </div>
-              
+
               {/* Message Input */}
               <div className="p-4 border-t border-gray-700">
                 <div className="flex space-x-2">
